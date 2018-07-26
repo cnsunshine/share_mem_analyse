@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="gbk"?>
+<root>
+    <!--<struct name="info">-->
+        <!--<entry name="age" type="int"/>-->
+        <!--<entry name="word" type="char"/>-->
+        <!--<entry name="text" type="string" size="100"/>-->
+    <!--</struct>-->
+
+
+    <!-- 内存块结构定义 -->
+    <struct name="RoleInfo">
+        <!-- block 类型用来标记跳过 -->
+        <entry name="block" type="block" size="0"/>
+        <entry name="age" type="int"/>
+        <entry name="ch" type="char"/>
+        <!-- string 类型必须指定长度 -->
+        <entry name="str" size="100" type="string"/>
+        <entry name="student" type="StudentInfo"/>
+        <entry name="location" type="UserLocation"/>
+    </struct>
+
+    <!--自定义数据结构声明-->
+    <struct name="StudentInfo">
+        <entry name="id" type="int"/>
+    </struct>
+    <struct name="UserLocation">
+        <entry name="loc" type="CommonLocation"/>
+        <entry name="description" type="string" size="255"/>
+    </struct>
+    <struct name="CommonLocation">
+        <entry name="country" type="string" size="50"/>
+        <entry name="province" type="string" size="20"/>
+    </struct>
+</root>
