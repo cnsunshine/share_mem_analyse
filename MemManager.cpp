@@ -368,6 +368,6 @@ bool MemManager::printDataToFile() {
         printByType((void *) (printNodeList[i].index + (char *)this->curShm), printNodeList[i].type, outFile);
         outFile << std::endl;
     }
-
+    outFile.close();
     return true;
 }
