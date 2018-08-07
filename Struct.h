@@ -38,7 +38,13 @@ struct StructType {
 struct StructNode {
     const char *name;
     bool isLeaf; //是否为叶子节点
-    int index;
+
+    struct {
+        bool isArray;
+        int arrayIndex; //数组下标，非数组默认为0
+        int count; //数组总数
+    } arrayInfo;
+    int index; //地址起始位置
     StructType *structTypeInfo;
     std::vector<StructNode *> structNodeList;
 };
@@ -53,8 +59,10 @@ struct QueryCondition {
     std::vector<char *> columnNameList;
     int basicType;
     int index;
+    StructNode *structNode;
     std::string op;
     const char *value;
+    int queryId; //标记每一个查询的id，如果是数组，展开后id相同属于同一组
 };
 
 //打印节点

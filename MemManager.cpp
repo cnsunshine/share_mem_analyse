@@ -8,6 +8,7 @@
 #include <string>
 #include <queue>
 #include <fstream>
+#include <stack>
 #include "MemManager.h"
 #include "Struct.h"
 
@@ -80,20 +81,6 @@ void MemManager::nextStructBlock() {
 
 void MemManager::setStructList(std::vector<StructNode *> &structList) {
     this->structList = structList;
-    StructNode *structNode;
-    std::queue<StructNode *> structNodeStack;
-    structNodeStack.push(structList[0]);
-    while (!structNodeStack.empty()) {
-        structNode = structNodeStack.front();
-        structNodeStack.pop();
-        if (structNode->isLeaf) {
-            this->printNodeList.push_back({structNode->name, structNode->structTypeInfo->type, structNode->index});
-        }
-        for (int i = 0; i < structNode->structNodeList.size(); ++i) {
-            structNodeStack.push(structNode->structNodeList[i]);
-        }
-    }
-
 }
 
 bool MemManager::linkMem(const int &shmid) {
@@ -104,115 +91,146 @@ void MemManager::setQueryConditionList(std::vector<QueryCondition *> &queryCondi
     this->queryConditionList = queryConditionList;
 }
 
+//todo 
+/**
+ * 目前只支持and语句，如果遇到数组的时候，应该将数组展开条件变为or进行查询
+ * @param isFirst
+ * @return
+ */
 bool MemManager::search(const bool &isFirst) {
     if (isFirst) {
         this->curShm = this->shm;
-        bool continueLoop;
+    }
+    int a = 0;
+    bool continueLoop;
 
-        int a = 0;
-        while (true) {
-            continueLoop = false;
-            if ((size_t)this->curShm - (size_t)shm + this->structSize > this->shmSize) {
-                return false;
-            }
+    while (true) {
+        continueLoop = false;
+        if (this->isMemOverFlow()) {
+            return false;
+        }
 
+        int curQueryId = 0;
+        for (int j = 0; j < this->queryConditionTotalNum; ++j) {
             for (int i = 0; i < queryConditionList.size(); ++i) {
+                continueLoop = false;
+                //按照queryId分组查询
+                if (queryConditionList[i]->queryId != curQueryId) {
+                    continue;
+                }
                 //todo update here
                 switch (queryConditionList[i]->basicType) {
                     case _INT:
-                        this->iData = (int )std::stoi(queryConditionList[i]->value);
+                        this->iData = (int) std::stoi(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->iData, _INT);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->iData, _INT);
                             break;
                         }
                     case _CHAR:
-                        this->cData = (char)queryConditionList[i]->value[0];
+                        this->cData = (char) queryConditionList[i]->value[0];
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->cData, _CHAR);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->cData, _CHAR);
                             break;
                         }
                     case _STRING:
                         this->strData = const_cast<char *>(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) this->strData, _STRING);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) this->strData, _STRING);
                             break;
                         }
                     case _UINT8_T:
-                        this->uint8Data = (unsigned char)queryConditionList[i]->value[0];
+                        this->uint8Data = (unsigned char) queryConditionList[i]->value[0];
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->uint8Data, _UINT8_T);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->uint8Data, _UINT8_T);
                             break;
                         }
                     case _UINT16_T:
-                        this->uint16Data = (uint16_t)std::stoul(queryConditionList[i]->value);
+                        this->uint16Data = (uint16_t) std::stoul(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->uint16Data, _UINT16_T);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->uint16Data, _UINT16_T);
                             break;
                         }
                     case _UINT32_T:
-                        this->uint32Data = (uint32_t)std::stoul(queryConditionList[i]->value);
+                        this->uint32Data = (uint32_t) std::stoul(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->uint32Data, _UINT32_T);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->uint32Data, _UINT32_T);
                             break;
                         }
                     case _INT8_T:
-                        this->int8Data = (char)queryConditionList[i]->value[0];
+                        this->int8Data = (char) queryConditionList[i]->value[0];
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->int8Data, _INT8_T);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->int8Data, _INT8_T);
                             break;
                         }
                     case _INT16_T:
-                        this->int16Data = (int16_t)std::stoi(queryConditionList[i]->value);
+                        this->int16Data = (int16_t) std::stoi(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->int16Data, _INT16_T);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->int16Data, _INT16_T);
                             break;
                         }
                     case _INT32_T:
-                        this->int32Data = (int32_t)std::stoi(queryConditionList[i]->value);
+                        this->int32Data = (int32_t) std::stoi(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->int32Data, _INT32_T);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->int32Data, _INT32_T);
                             break;
                         }
                     case _UNSIGNED_CHAR:
-                        this->ucData = (unsigned char)queryConditionList[i]->value[0];
+                        this->ucData = (unsigned char) queryConditionList[i]->value[0];
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->ucData, _UNSIGNED_CHAR);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->ucData, _UNSIGNED_CHAR);
                             break;
                         }
                     case _SHORT:
-                        this->siData = (short int)std::stoi(queryConditionList[i]->value);
+                        this->siData = (short int) std::stoi(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->siData, _SHORT);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->siData, _SHORT);
                             break;
                         }
                     case _FLOAT:
-                        this->fData = (float)std::stof(queryConditionList[i]->value);
+                        this->fData = (float) std::stof(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->fData, _FLOAT);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->fData, _FLOAT);
                             break;
                         }
                     case _DOUBLE:
-                        this->dData = (double)std::stod(queryConditionList[i]->value);
+                        this->dData = (double) std::stod(queryConditionList[i]->value);
                         {
-                            continueLoop = isEqual((char *)this->curShm + queryConditionList[i]->index, (void *) &this->dData, _DOUBLE);
+                            continueLoop = isEqual((char *) this->curShm + queryConditionList[i]->index,
+                                                   (void *) &this->dData, _DOUBLE);
                             break;
                         }
                 }
                 if (continueLoop) {
-                    continue;
+                    break; //只要一个query子条件满足条件则跳出
                 } else {
-                    break;
+                    continue; //继续寻找
                 }
             }
-            if (continueLoop) { //退出时continueLoop是true,则寻找到
-                return true;
+            if (continueLoop) {
+                curQueryId++;
+                continue; //一个query父条件寻找到则继续
+            } else {
+                break; //都不满足进行短路操作
             }
-            this->nextStructBlock();
-            a++;
         }
+        if (continueLoop) { //退出时continueLoop是true,则寻找到
+            return true;
+        }
+        this->nextStructBlock();
+        a++;
     }
-
-    return false;
 }
 
 void MemManager::setStructSize(const int &size) {
@@ -228,8 +246,23 @@ bool MemManager::findData(const bool &isFirst) {
         }
     } else {
         std::cout << "no data found." << std::endl;
+        return false;
     }
-    return false;
+
+    while (true) {
+        //next
+        this->nextStructBlock();
+        if (this->isMemOverFlow()) {
+            return false;
+        }
+        if (this->search(false)) {
+            if (!this->filename.empty()) {
+                this->printDataToFile();
+            } else {
+                this->printData();
+            }
+        }
+    }
 }
 
 bool MemManager::printData() {
@@ -239,9 +272,10 @@ bool MemManager::printData() {
             continue;
         }
         std::cout << printNodeList[i].name << ": ";
-        printByType((void *) (printNodeList[i].index + (char *)this->curShm), printNodeList[i].type);
+        printByType((void *) (printNodeList[i].index + (char *) this->curShm), printNodeList[i].type);
         std::cout << std::endl;
     }
+    std::cout << "--------------------" << std::endl;
     return true;
 }
 
@@ -358,16 +392,45 @@ void MemManager::setOutputFilename(const std::string &filename) {
 
 bool MemManager::printDataToFile() {
     std::ofstream outFile;
-    outFile.open(this->filename, std::ios::out);
+    outFile.open(this->filename, std::ios::out | std::ios::app);
+    outFile.seekp(outFile.end);
     for (int i = 0; i < this->printNodeList.size(); ++i) {
         //跳过打印block类型
         if (printNodeList[i].type == _BLOCK) {
             continue;
         }
         outFile << printNodeList[i].name << ": ";
-        printByType((void *) (printNodeList[i].index + (char *)this->curShm), printNodeList[i].type, outFile);
+        printByType((void *) (printNodeList[i].index + (char *) this->curShm), printNodeList[i].type, outFile);
         outFile << std::endl;
     }
+    outFile << "--------------------" << std::endl;
     outFile.close();
     return true;
+}
+
+bool MemManager::isMemOverFlow() {
+    if ((size_t) this->curShm - (size_t) shm + this->structSize > this->shmSize) {
+        return true;
+    }
+    return false;
+}
+
+void MemManager::setQueryConditionTotalNum(const int &count) {
+    this->queryConditionTotalNum = count;
+}
+
+void MemManager::setPrintNode() {
+    StructNode *structNode;
+    std::queue<StructNode *> structNodeStack;
+    structNodeStack.push(structList[0]);
+    while (!structNodeStack.empty()) {
+        structNode = structNodeStack.front();
+        structNodeStack.pop();
+        if (structNode->isLeaf) {
+            this->printNodeList.push_back({structNode->name, structNode->structTypeInfo->type, structNode->index});
+        }
+        for (int i = 0; i < structNode->structNodeList.size(); ++i) {
+            structNodeStack.push(structNode->structNodeList[i]);
+        }
+    }
 }

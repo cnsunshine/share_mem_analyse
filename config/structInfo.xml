@@ -14,7 +14,8 @@
         <entry name="age" type="int"/>
         <entry name="ch" type="char"/>
         <!-- string 类型必须指定长度 -->
-        <entry name="str" size="100" type="string"/>
+        <entry name="str" count="5" type="Array"/>
+        <!--<entry name="str" size="100" type="string"/>-->
         <entry name="student" type="StudentInfo"/>
         <entry name="location" type="UserLocation"/>
     </struct>
@@ -30,5 +31,8 @@
     <struct name="CommonLocation">
         <entry name="country" type="string" size="50"/>
         <entry name="province" type="string" size="20"/>
+    </struct>
+    <struct name="Array">
+        <entry name="childStr" count="20" type="char"/>
     </struct>
 </root>

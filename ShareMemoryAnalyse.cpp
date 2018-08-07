@@ -14,7 +14,6 @@ ShareMemoryAnalyse::ShareMemoryAnalyse() {
     this->xmlLoader = new XmlLoader;
     this->memManager = new MemManager;
     this->sqlAnalyse = new SqlAnalyse;
-    this->offset = 0;
 };
 
 void ShareMemoryAnalyse::reportError(const int &level, const std::string &str) {
@@ -42,6 +41,7 @@ bool ShareMemoryAnalyse::linkMem(const int &shmid) {
     if(memManager->linkMem(shmid)) {
         std::cout << "input mem offset(查询的数据段的首条数据在内存中的起始位置): ";
         std::cin >> offset;
+        std::cin.ignore();
         memManager->setShmOffset(offset);
     }
 
@@ -49,13 +49,15 @@ bool ShareMemoryAnalyse::linkMem(const int &shmid) {
 }
 
 bool ShareMemoryAnalyse::setAndLoadSql() {
-    this->sqlAnalyse->setAndLoadSql();
+    this->sqlAnalyse->setAndLoadSql(xmlLoader->structList);
     return true;
 }
 
 bool ShareMemoryAnalyse::analyseSqlStruct() {
     for (int i = 0; i < this->sqlAnalyse->queryConditionList.size(); ++i) {
+        //填充基础类型
         this->sqlAnalyse->queryConditionList[i]->basicType = this->xmlLoader->getBasicType(this->sqlAnalyse->queryConditionList[i]->columnNameList);
+        //填充索引
         this->sqlAnalyse->queryConditionList[i]->index = this->xmlLoader->getDataIndex(this->sqlAnalyse->queryConditionList[i]->columnNameList);
     }
     return true;
@@ -63,13 +65,19 @@ bool ShareMemoryAnalyse::analyseSqlStruct() {
 
 void ShareMemoryAnalyse::setArgs() {
     memManager->setStructList(xmlLoader->structList);
+    memManager->setPrintNode();
     memManager->setQueryConditionList(sqlAnalyse->queryConditionList);
+    memManager->setQueryConditionTotalNum(sqlAnalyse->queryConditionTotalNum);
     memManager->setStructSize(xmlLoader->structList[0]->structTypeInfo->size);
     memManager->setOutputFilename(sqlAnalyse->filename);
 }
 
 bool ShareMemoryAnalyse::findData(const bool &isFirst) {
     return memManager->findData(isFirst);
+}
+
+void ShareMemoryAnalyse::recycleMemory() {
+    sqlAnalyse->recycleMemory();
 }
 
 

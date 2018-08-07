@@ -53,6 +53,8 @@ private:
     int getDataSize(const int &type);
     //列出所有数据结构，并进行展开
     int printAllStructEntry();
+    //对vector进行一层深拷贝
+    void deepCopy(std::vector<StructNode *> &destStructNodeList, const std::vector<StructNode *> &srcStructNodeList);
 };
 
 

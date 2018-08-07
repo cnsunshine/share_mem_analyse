@@ -4,16 +4,18 @@
 
 #include <iostream>
 #include <cstring>
+#include <queue>
 #include "SqlAnalyse.h"
 
 void SqlAnalyse::toLower() {
     for (int i = 0; i < sql.length(); ++i) {
-        sql[i] = (char)tolower(sql[i]);
+        sql[i] = (char) tolower(sql[i]);
     }
 }
 
 SqlAnalyse::SqlAnalyse() {
     this->filename.clear();
+    this->autoSetQueryId = 0;
 }
 
 SqlAnalyse::~SqlAnalyse() {
@@ -38,7 +40,8 @@ bool SqlAnalyse::isLetter(const std::string &text) {
     }
 
     for (int i = 1; i < text.length(); ++i) {
-        if ((text[i] >= 'a' && text[i] <= 'z') || (text[i] >= 'A' && text[i] <= 'Z') || (text[i] >= '0' && text[i] <= '9')) {
+        if ((text[i] >= 'a' && text[i] <= 'z') || (text[i] >= 'A' && text[i] <= 'Z') ||
+            (text[i] >= '0' && text[i] <= '9')) {
             continue;
         } else {
             return false;
@@ -113,7 +116,7 @@ void SqlAnalyse::analyseTextStep1() {
                     text.push_back(this->sql[i]);
                     status = 1;
                     i++;
-                } else if (this->sql[i] == '.'){
+                } else if (this->sql[i] == '.') {
                     //todo 这里需要处理
                     text.push_back(this->sql[i]);
                     i++;
@@ -182,12 +185,14 @@ void SqlAnalyse::analyseTextStep1() {
     this->textList.push_back(text);
 }
 
-void SqlAnalyse::setAndLoadSql() {
+void SqlAnalyse::setAndLoadSql(const std::vector<StructNode *> &structList) {
+    this->structList = structList;
     std::cout << "sql>";
-    std::cin.ignore(1024, '\n');
+//    std::cin.ignore(1024, '\n');
     getline(std::cin, this->sql);
     this->analyseTextStep1();
     this->analyseTextStep2();
+    this->expandQueryCondition();
 }
 
 void SqlAnalyse::analyseTextStep2() {
@@ -198,10 +203,10 @@ void SqlAnalyse::analyseTextStep2() {
                 if (this->textList[i] == "select") {
                     sqlType = 1;
                     status = 1;
-                }  else if (this->textList[i] == "update") {
+                } else if (this->textList[i] == "update") {
                     sqlType = 3;
                     status = 3;
-                }  else {
+                } else {
                     std::cout << "bad sql sentence: bad start" << std::endl;
                     exit(0);
                 }
@@ -225,7 +230,7 @@ void SqlAnalyse::analyseTextStep2() {
                 if (this->textList[i] == "from") {
                     this->filename.clear();
                     status = 12;
-                }else if(this->textList[i] == "into") {
+                } else if (this->textList[i] == "into") {
                     status = 17;
                 } else {
                     std::cout << "bad sql sentence: bad text" << std::endl;
@@ -233,15 +238,15 @@ void SqlAnalyse::analyseTextStep2() {
                 }
                 break;
             case 17:
-                if (this->isLetter(this->textList[i])){
+                if (this->isLetter(this->textList[i])) {
                     this->filename = this->textList[i];
                     status = 18;
                 }
                 break;
             case 18:
-                if (this->textList[i] == "from"){
+                if (this->textList[i] == "from") {
                     status = 12;
-                }else {
+                } else {
                     std::cout << "bad sql sentence: bad text" << std::endl;
                     exit(0);
                 }
@@ -254,7 +259,8 @@ void SqlAnalyse::analyseTextStep2() {
                     status = 12;
                 } else {
                     std::cout << "bad sql sentence: bad text" << std::endl;
-                    exit(0);                  }
+                    exit(0);
+                }
                 break;
             case 12://select ... from
                 if (isLetter(this->textList[i])) {
@@ -270,19 +276,23 @@ void SqlAnalyse::analyseTextStep2() {
                     status = 14;
                 } else {
                     std::cout << "bad sql sentence: bad text" << std::endl;
-                    exit(0);                }
+                    exit(0);
+                }
                 break;
             case 14:
                 i += 2;
                 if (i < this->textList.size()) {//一个查询需要三个
-                    if ((isLetter(this->textList[i - 2]) || isColumn(this->textList[i - 2])) && isOperator(this->textList[i - 1]) &&
+                    if ((isLetter(this->textList[i - 2]) || isColumn(this->textList[i - 2])) &&
+                        isOperator(this->textList[i - 1]) &&
                         (isLetter(this->textList[i]) || isNumber(this->textList[i]))) {
                         queryConditionList.push_back(
-                                this->buildQueryCondition(this->textList[i - 2], this->textList[i - 1], this->textList[i]));
+                                this->buildQueryCondition(this->textList[i - 2], this->textList[i - 1],
+                                                          this->textList[i]));
                         status = 15;
                     } else {
                         std::cout << "bad sql sentence: bad text" << std::endl;
-                        exit(0);                    }
+                        exit(0);
+                    }
                 } else {
                     std::cout << "bad sql sentence: lost query condition" << std::endl;
                     exit(0);
@@ -363,7 +373,7 @@ void SqlAnalyse::analyseTextStep2() {
 
 bool SqlAnalyse::isColumn(const std::string &text) {
     for (int i = 0; i < text.length(); ++i) {
-        if (!((text[i] >= 'a' && text[i] <= 'z') || (text[i] >= 'A' && text[i] <= 'Z') || text[i] == '.')){
+        if (!((text[i] >= 'a' && text[i] <= 'z') || (text[i] >= 'A' && text[i] <= 'Z') || text[i] == '.')) {
             return false;
         }
     }
@@ -375,9 +385,9 @@ SqlAnalyse::buildQueryCondition(const std::string &columnName, const std::string
     std::string tmpName;
     QueryCondition *queryCondition = new QueryCondition;
     for (int i = 0; i < columnName.length(); ++i) {
-        if (columnName[i] != '.'){
+        if (columnName[i] != '.') {
             tmpName.push_back(columnName[i]);
-        }else{
+        } else {
             //申请heap内存存放
             char *str = new char[tmpName.length() + 1];
             memset(str, 0, tmpName.length() + 1);
@@ -386,7 +396,7 @@ SqlAnalyse::buildQueryCondition(const std::string &columnName, const std::string
             tmpName.clear();
         }
     }
-    if (tmpName.length() > 0){
+    if (tmpName.length() > 0) {
         //申请heap内存存放
         char *str = new char[tmpName.length() + 1];
         memset(str, 0, tmpName.length() + 1);
@@ -399,5 +409,85 @@ SqlAnalyse::buildQueryCondition(const std::string &columnName, const std::string
     queryCondition->op = op;
     queryCondition->basicType = 0;
     queryCondition->index = 0;
+    queryCondition->structNode = NULL;
+    queryCondition->queryId = this->autoSetQueryId++;
     return queryCondition;
+}
+
+
+bool SqlAnalyse::expandQueryCondition() {
+    //初始化
+    //设置查询总数
+    this->queryConditionTotalNum = (int) this->queryConditionList.size();
+
+    std::vector<char *>::iterator it;
+    for (int i = 0; i < this->queryConditionList.size(); ++i) {
+        it = this->queryConditionList[i]->columnNameList.begin();
+        if (strcmp((*it), this->structList[0]->name) == 0) {
+            this->queryConditionList[i]->structNode = this->structList[0]; //structList[0]为主结构
+            this->queryConditionList[i]->columnNameList.erase(it);
+        } else {
+            std::cout << "input first struct wrong" << std::endl;
+            exit(0);
+        }
+    }
+    //循环下降
+    while (true) {
+        bool change = false;
+        for (int i = 0; i < queryConditionList.size(); ++i) {
+            std::vector<char *>::iterator iterator_columnName;
+            if (this->queryConditionList[i]->columnNameList.empty()) {
+                continue;
+            }
+            iterator_columnName = this->queryConditionList[i]->columnNameList.begin();
+            bool match = false;
+            for (int j = 0; j < this->queryConditionList[i]->structNode->structNodeList.size(); ++j) {
+                if (strcmp(this->queryConditionList[i]->structNode->structNodeList[j]->name, (*iterator_columnName)) ==
+                    0) {
+                    QueryCondition *queryCondition = new QueryCondition;
+                    queryCondition->columnNameList = this->queryConditionList[i]->columnNameList;
+                    queryCondition->columnNameList.erase(queryCondition->columnNameList.begin()); //摘除头字符串，已经匹配
+                    queryCondition->basicType = this->queryConditionList[i]->structNode->structNodeList[j]->structTypeInfo->type;
+                    queryCondition->index = this->queryConditionList[i]->structNode->structNodeList[j]->index;
+                    queryCondition->structNode = this->queryConditionList[i]->structNode->structNodeList[j];
+                    queryCondition->op = this->queryConditionList[i]->op;
+                    queryCondition->value = this->queryConditionList[i]->value;
+                    queryCondition->queryId = this->queryConditionList[i]->queryId;
+                    //todo 释放QueryCondition
+                    this->queryConditionList.push_back(queryCondition);
+                    match = true; //匹配到
+                    change = true; //有更改
+                }
+            }
+            this->queryConditionList.erase(this->queryConditionList.begin() + i); //删除已经更新的情况
+            if (!match) {
+                std::cout << "match wrong" << std::endl;
+                exit(0);
+            }
+
+        }
+        if (change) {
+            continue;
+        } else {
+            return true;
+        }
+    }
+
+}
+
+void SqlAnalyse::recycleMemory() {
+    this->sql.clear();
+    this->textList.clear();
+    this->sqlType = 0;
+    this->tableName.clear();
+    this->autoSetQueryId = 0;
+
+    this->queryConditionTotalNum = 0;
+    for (int i = 0; i < this->queryConditionList.size(); ++i) {
+        for (int j = 0; j < this->queryConditionList[i]->columnNameList.size(); ++j) {
+            delete this->queryConditionList[i]->columnNameList[i];
+        }
+        delete this->queryConditionList[i];
+    }
+    this->queryConditionList.clear();
 }

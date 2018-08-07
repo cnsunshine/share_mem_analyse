@@ -13,20 +13,8 @@ int main() {
     analyse->linkMem(shmid);
     while (true) {
         analyse->setAndLoadSql();
-        analyse->analyseSqlStruct();
         analyse->setArgs();
         analyse->findData(true);
+        analyse->recycleMemory();
     }
-
-
-
-
-//    analyse->setSearchData();
-//    if (analyse->search(true)) {
-//        analyse->printData();
-//    } else {
-//        std::cout << "no data";
-//    }
-
-    return 0;
 }

@@ -6,6 +6,7 @@
 #include <stack>
 #include <queue>
 #include "XmlLoader.h"
+#include "Struct.h"
 
 XmlLoader::XmlLoader() {
 
@@ -46,19 +47,19 @@ int XmlLoader::getDataType(const char *typeName) {
         return _UINT32_T;
     } else if (strcmp(typeName, "int8_t") == 0) {
         return _INT8_T;
-    }else if (strcmp(typeName, "int16_t") == 0) {
+    } else if (strcmp(typeName, "int16_t") == 0) {
         return _INT16_T;
-    }else if (strcmp(typeName, "int32_t") == 0) {
+    } else if (strcmp(typeName, "int32_t") == 0) {
         return _INT32_T;
-    }else if (strcmp(typeName, "unsigned char") == 0) {
+    } else if (strcmp(typeName, "unsigned char") == 0) {
         return _UNSIGNED_CHAR;
-    }else if (strcmp(typeName, "short") == 0) {
+    } else if (strcmp(typeName, "short") == 0) {
         return _SHORT;
-    }else if (strcmp(typeName, "float") == 0) {
+    } else if (strcmp(typeName, "float") == 0) {
         return _FLOAT;
-    }else if (strcmp(typeName, "double") == 0) {
+    } else if (strcmp(typeName, "double") == 0) {
         return _DOUBLE;
-    }else {//获取已经读入的类型
+    } else {//获取已经读入的类型
         for (int i = 0; i < this->structList.size(); ++i) {
             if (strcmp(typeName, structList[i]->name) == 0) {
                 return structList[i]->structTypeInfo->type;
@@ -121,6 +122,8 @@ bool XmlLoader::loadAllStruct() {
     tinyxml2::XMLElement *curEntryElement;
     tinyxml2::XMLElement *rootElement;
     int autoSetType = AutoSetTypeStart;
+    int arrayMemberCount = 0;
+//    StructNode *preArrayMember = NULL;
 
     this->pBackpatchChainHead = new StructChain;
     this->pBackpatchChainHead->pNext = NULL;
@@ -134,6 +137,8 @@ bool XmlLoader::loadAllStruct() {
         tmpStructInfo->structTypeInfo = tmpStructTypeInfo;
 
         tmpStructInfo->name = curStructElement->Attribute("name");
+        bzero(&tmpStructInfo->arrayInfo, sizeof(tmpStructInfo->arrayInfo));
+
         tmpStructInfo->structTypeInfo->typeName = curStructElement->Attribute("name");
         tmpStructInfo->structTypeInfo->type = autoSetType++;
         tmpStructInfo->structTypeInfo->size = -1;
@@ -147,16 +152,42 @@ bool XmlLoader::loadAllStruct() {
 
         curEntryElement = curStructElement->FirstChildElement();
         while (true) {
-            StructNode *tmpStructNode = new StructNode;
-            tmpStructNode->name = curEntryElement->Attribute("name");
-            StructType *tmpStructTypeInfo = new StructType;
-            tmpStructNode->structTypeInfo = tmpStructTypeInfo;
+            //
+            arrayMemberCount = curEntryElement->IntAttribute("count", 0);
+            if (arrayMemberCount > 1) {
+                //array按照数量进行直接展开，并进行标记
+                for (int i = 0; i < arrayMemberCount; ++i) {
+                    StructNode *tmpStructNode = new StructNode;
+                    tmpStructNode->name = curEntryElement->Attribute("name");
+                    tmpStructNode->arrayInfo.isArray = true;
+                    tmpStructNode->arrayInfo.arrayIndex = i;
+                    tmpStructNode->arrayInfo.count = arrayMemberCount;
 
-            tmpStructNode->structTypeInfo->typeName = curEntryElement->Attribute("type");
-            tmpStructNode->structTypeInfo->size = curEntryElement->IntAttribute("size", -1);
-            //type和size等待回填
-            tmpStructNode->structTypeInfo->type = 0;
-            tmpStructInfo->structNodeList.push_back(tmpStructNode);
+                    StructType *tmpStructTypeInfo = new StructType;
+                    tmpStructNode->structTypeInfo = tmpStructTypeInfo;
+
+                    tmpStructNode->structTypeInfo->typeName = curEntryElement->Attribute("type");
+                    tmpStructNode->structTypeInfo->size = curEntryElement->IntAttribute("size", -1);
+                    //type和size等待回填
+                    tmpStructNode->structTypeInfo->type = 0;
+
+                    tmpStructInfo->structNodeList.push_back(tmpStructNode);
+                }
+            } else {
+                StructNode *tmpStructNode = new StructNode;
+                tmpStructNode->name = curEntryElement->Attribute("name");
+                bzero(&tmpStructNode->arrayInfo, sizeof(tmpStructNode->arrayInfo));
+
+                StructType *tmpStructTypeInfo = new StructType;
+                tmpStructNode->structTypeInfo = tmpStructTypeInfo;
+
+                tmpStructNode->structTypeInfo->typeName = curEntryElement->Attribute("type");
+                tmpStructNode->structTypeInfo->size = curEntryElement->IntAttribute("size", -1);
+                //type和size等待回填
+                tmpStructNode->structTypeInfo->type = 0;
+                tmpStructInfo->structNodeList.push_back(tmpStructNode);
+            }
+
 
             if (curEntryElement == curStructElement->LastChildElement()) {
                 break;
@@ -217,7 +248,7 @@ bool XmlLoader::backpatchSize() {
         } else {
             //计算完成后赋值
             pNode->pStructNode->structTypeInfo->size = size;
-            //将该结构挂载到所有entry里包含该结构的struct里
+            //将该结构挂载到所有entry里包含该结构的struct里 //
             this->mountStructIoEntry(pNode->pStructNode);
             //链上摘下
             preStructChain->pNext = pNode->pNext;
@@ -243,7 +274,8 @@ bool XmlLoader::mountStructIoEntry(StructNode *pStructNode) {
                 delete pNode->pStructNode->structNodeList[i]->structTypeInfo;
                 //挂载
                 pNode->pStructNode->structNodeList[i]->structTypeInfo = pStructNode->structTypeInfo;
-                pNode->pStructNode->structNodeList[i]->structNodeList = pStructNode->structNodeList;
+                //拷贝
+                this->deepCopy(pNode->pStructNode->structNodeList[i]->structNodeList, pStructNode->structNodeList);
             }
         }
         pNode = pNode->pNext;
@@ -251,6 +283,7 @@ bool XmlLoader::mountStructIoEntry(StructNode *pStructNode) {
     return false;
 }
 
+//对于数组成员，直接返回第一个成员类型
 int XmlLoader::getBasicType(const std::vector<char *> &columnNameList) {
     std::vector<StructNode *> *structNodeList = &this->structList;
     bool found;
@@ -278,6 +311,7 @@ int XmlLoader::getBasicType(const std::vector<char *> &columnNameList) {
     }
 }
 
+//这里要增加数组类型支持
 int XmlLoader::getDataIndex(const std::vector<char *> &columnNameList) {
     //这里的定位较为简单，因为寻找是按照层级进行的
     std::vector<StructNode *> *structNodeList = &this->structList;
@@ -326,5 +360,18 @@ bool XmlLoader::createIndex() {
         }
     }
     return false;
+}
+
+void XmlLoader::deepCopy(std::vector<StructNode *> &destStructNodeList, const std::vector<StructNode *> &srcStructNodeList) {
+    for (int i = 0; i < srcStructNodeList.size(); ++i) {
+        StructNode *structNode = new StructNode;
+        structNode->structNodeList.assign(srcStructNodeList[i]->structNodeList.begin(), srcStructNodeList[i]->structNodeList.end());
+        structNode->structTypeInfo =srcStructNodeList[i]->structTypeInfo;
+        structNode->index = srcStructNodeList[i]->index;
+        structNode->name = srcStructNodeList[i]->name;
+        structNode->arrayInfo = srcStructNodeList[i]->arrayInfo;
+        structNode->isLeaf = srcStructNodeList[i]->isLeaf;
+        destStructNodeList.push_back(structNode);
+    }
 }
 

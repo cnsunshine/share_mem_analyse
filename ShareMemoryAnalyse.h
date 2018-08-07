@@ -34,23 +34,12 @@ public:
 
     bool findData(const bool &isFirst);
 
+    void recycleMemory(); //回收内存
+
 private:
     XmlLoader *xmlLoader;
     SqlAnalyse *sqlAnalyse;
     MemManager *memManager;
-    //共享内存指针
-    void *shm;//共享内存基址
-    void *curShm;//当前指针
-    int offset;//当前字节偏移，用来标识结构体内位置偏移量
-    size_t shmSize;
-    //tiny文档
-    std::vector<StructNode *> structNodeList;
-    int structSize;
-    //搜索数据
-    int chooseEntry;//选中行
-    int iData;
-    char cData;
-    char *strData;
 
     //error report
     void reportError(const int &level, const std::string &str);

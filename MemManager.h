@@ -24,7 +24,11 @@ public:
 
     void setStructList(std::vector<StructNode *> &structList);
 
+    void setPrintNode(); //设置打印节点，目前为全部打印
+
     void setQueryConditionList(std::vector<QueryCondition *> &queryConditionList);
+
+    void setQueryConditionTotalNum(const int &count);
 
     void setStructSize(const int &size);
 
@@ -37,6 +41,7 @@ private:
     std::vector<PrintNode> printNodeList;
     int structSize;
     std::string filename;
+    int queryConditionTotalNum;
 
 
     //共享内存指针
@@ -71,10 +76,14 @@ private:
     bool isEqual(void *lh, void *rh, const int &dataType);
     //offset偏移到下一个struct块
     void nextStructBlock();
+    //检查是否内存上溢
+    bool isMemOverFlow();
     //从头搜索
     bool search(const bool &isFirst);
     //打印数据
     bool printData();
+    //todo 优化打印
+    //bool printDataV2();
 
     bool printDataToFile();
 
