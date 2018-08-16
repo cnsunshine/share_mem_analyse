@@ -5,9 +5,13 @@
 
 int main() {
     int shmid; //设置共享内存shmid
+    key_t key;
 
-    std::cout << "input shmid: ";
-    std::cin >> shmid;
+    std::cout << "input share key: ";
+    std::cin >> key;
+    shmid = shmget(key, 0, 0);
+//    std::cout << "input shmid: ";
+//    std::cin >> shmid;
     ShareMemoryAnalyse *analyse = new ShareMemoryAnalyse();
     analyse->loadXml();
     analyse->linkMem(shmid);
