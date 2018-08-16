@@ -123,12 +123,15 @@ province: gaada
 int
 char
 char*(string)
+char[],
 uint8_t,
 uint16_t,
 uint32_t,
+uint64_t
 int8_t,
 int16_t,
 int32_t,
+int64_t,
 unsigned char,
 short,
 float,
@@ -138,9 +141,8 @@ double,
 * `=`条件（多组合条件）
 * 单条复合条件的数据查询
 * 结果写入文本
-* 支持数组
+* 支持数组（含字符数组）
 ## 1.5. 即将更新的功能
-* 优化错误处理
 * 支持update
 * 支持更丰富的查询条件
 * 支持指定字段输出
