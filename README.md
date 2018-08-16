@@ -42,9 +42,9 @@ cmake .
 make
 ```
 ### 1.2.3. 运行
-1. 键入共享内存shmid
+1. 键入共享内存key
 2. 键入共享内存起始偏移位置。（例如一段共享内存，前面是100个固定分配的用户信息结构体，后面有100个固定分配的物品信息结构体。如果我们要查询某个固定物品，需要把起始的定位设置为`100*sizeof(用户信息结构体)`）。
-3. 输入查询语句，查询语句目前仅支持一类 `select * [into _filename] from all where _FirstName._SecondName[.ThirdName...] [and ...]`  
+3. 输入查询语句，查询语句目前仅支持一类 `select * [into _filename] from all where _FirstName._SecondName[._ThirdName...] [and ...]`  
 *[]为可以缺省的内容*  
 _filename : 将查询结果写入_filename文件中  
 _FirstName/_SecondName/... : 为需要查询的内容名，以`.`符号递进。
