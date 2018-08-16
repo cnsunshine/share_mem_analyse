@@ -37,7 +37,7 @@ ShareMemoryAnalyse::~ShareMemoryAnalyse() {
 }
 
 bool ShareMemoryAnalyse::linkMem(const int &shmid) {
-    int offset;
+    size_t offset;
     if(memManager->linkMem(shmid)) {
         std::cout << "input mem offset(查询的数据段的首条数据在内存中的起始位置): ";
         std::cin >> offset;
@@ -78,6 +78,7 @@ bool ShareMemoryAnalyse::findData(const bool &isFirst) {
 
 void ShareMemoryAnalyse::recycleMemory() {
     sqlAnalyse->recycleMemory();
+    memManager->recycleMemory();
 }
 
 

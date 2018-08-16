@@ -18,7 +18,7 @@ public:
 
     bool linkMem(const int &shmid);
 
-    void setShmOffset(int &offset);//设置查询的起始位置
+    void setShmOffset(size_t &offset);//设置查询的起始位置
 
     void setOutputFilename(const std::string &filename);
 
@@ -34,6 +34,8 @@ public:
 
     bool findData(const bool &isFirst);
 
+    bool recycleMemory();
+
 private:
     //****************结构数据**************//
     std::vector<StructNode *> structList;
@@ -47,6 +49,7 @@ private:
     //共享内存指针
     void *shm;//共享内存基址
     void *curShm;//当前指针
+    size_t offset; //设置偏移
     size_t shmSize;
 
     //*************data input**************//
@@ -70,16 +73,24 @@ private:
 
     //进程挂载上共享内存
     bool attachMem(const int &shmid);
+
     //进程离开共享内存
     bool leaveMem();
+
     //判断相等
     bool isEqual(void *lh, void *rh, const int &dataType);
+
+    bool isEqual(void *lh, void *rh, const int &dataType, const int &size);
+
     //offset偏移到下一个struct块
     void nextStructBlock();
+
     //检查是否内存上溢
     bool isMemOverFlow();
+
     //从头搜索
     bool search(const bool &isFirst);
+
     //打印数据
     bool printData();
     //todo 优化打印
@@ -88,7 +99,12 @@ private:
     bool printDataToFile();
 
     bool printByType(void *loc, const int &type);
+
+    bool printByType(void *loc, const int &type, const int &size);
+
     bool printByType(void *loc, const int &type, std::ofstream &outFile);
+
+    bool printByType(void *loc, const int &type, std::ofstream &outFile, const int &size);
 };
 
 

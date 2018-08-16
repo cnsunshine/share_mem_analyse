@@ -20,13 +20,16 @@ enum DATATYPE {
     _UINT8_T,
     _UINT16_T,
     _UINT32_T,
+    _UINT64_T,
     _INT8_T,
     _INT16_T,
     _INT32_T,
+    _INT64_T,
     _UNSIGNED_CHAR,
     _SHORT,
     _FLOAT,
     _DOUBLE,
+    _CHAR_ARRAY,
 };
 
 struct StructType {
@@ -47,6 +50,7 @@ struct StructNode {
     int index; //地址起始位置
     StructType *structTypeInfo;
     std::vector<StructNode *> structNodeList;
+    StructNode *parentStructNode;
 };
 
 //回填链
@@ -70,6 +74,7 @@ struct PrintNode {
     const char *name;
     int type;
     int index; //打印起始位置
+    StructNode *structNode;
 };
 
 #pragma pack()

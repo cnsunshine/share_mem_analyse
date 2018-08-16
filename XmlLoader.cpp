@@ -18,11 +18,12 @@ XmlLoader::~XmlLoader() {
 
 bool XmlLoader::load() {
     if (!this->openXmlDoc()) {
-        std::cout << "open xml document fail" << std::endl;
+        std::cout << "[XmlLoader::load]open xml document fail" << std::endl;
     }
     this->loadAllStruct();
     this->backpatchType();
     while (this->backpatchSize()); //循环回填
+    this->setParentStructNode();
     this->createIndex();
     this->printAllStructEntry();
     return true;
@@ -39,18 +40,24 @@ int XmlLoader::getDataType(const char *typeName) {
         return _CHAR;
     } else if (strcmp(typeName, "string") == 0) {
         return _STRING;
-    } else if (strcmp(typeName, "uint8_t") == 0) {
+    } else if(strcmp(typeName, "char[]") == 0){
+        return _CHAR_ARRAY;
+    }else if (strcmp(typeName, "uint8_t") == 0) {
         return _UINT8_T;
     } else if (strcmp(typeName, "uint16_t") == 0) {
         return _UINT16_T;
     } else if (strcmp(typeName, "uint32_t") == 0) {
         return _UINT32_T;
+    } else if (strcmp(typeName, "uint64_t") == 0) {
+        return _UINT64_T;
     } else if (strcmp(typeName, "int8_t") == 0) {
         return _INT8_T;
     } else if (strcmp(typeName, "int16_t") == 0) {
         return _INT16_T;
     } else if (strcmp(typeName, "int32_t") == 0) {
         return _INT32_T;
+    } else if (strcmp(typeName, "int64_t") == 0) {
+        return _INT64_T;
     } else if (strcmp(typeName, "unsigned char") == 0) {
         return _UNSIGNED_CHAR;
     } else if (strcmp(typeName, "short") == 0) {
@@ -79,6 +86,32 @@ int XmlLoader::getDataSize(const int &type) {
             return 1;
         case _STRING:
             return 0;//string应从配置中获取，该处代码仅作提示，不会运行至此处
+        case _CHAR_ARRAY:
+            return 0;//char[]应从配置中获取，该处代码仅作提示，不会运行至此处
+        case _UINT8_T:
+            return 1;
+        case _UINT16_T:
+            return 2;
+        case _UINT32_T:
+            return 4;
+        case _UINT64_T:
+            return 8;
+        case _INT8_T:
+            return 1;
+        case _INT16_T:
+            return 2;
+        case _INT32_T:
+            return 4;
+        case _INT64_T:
+            return 8;
+        case _UNSIGNED_CHAR:
+            return 1;
+        case _SHORT:
+            return 2; //diff in machine
+        case _FLOAT:
+            return 4;
+        case _DOUBLE:
+            return 8;
         default:
             for (int i = 0; i < this->structList.size(); ++i) {
                 if (type == structList[i]->structTypeInfo->type) {
@@ -117,6 +150,8 @@ bool XmlLoader::openXmlDoc() {
     return (this->xmlError == tinyxml2::XMLError::XML_SUCCESS);
 }
 
+
+//todo 读入格式不正确如没有类型告警
 bool XmlLoader::loadAllStruct() {
     tinyxml2::XMLElement *curStructElement;
     tinyxml2::XMLElement *curEntryElement;
@@ -142,6 +177,7 @@ bool XmlLoader::loadAllStruct() {
         tmpStructInfo->structTypeInfo->typeName = curStructElement->Attribute("name");
         tmpStructInfo->structTypeInfo->type = autoSetType++;
         tmpStructInfo->structTypeInfo->size = -1;
+        tmpStructInfo->parentStructNode = NULL;
         //添加到回填链等待后续回填size
         StructChain *pStructChain = new StructChain;
         StructChain *tmpStructChain = NULL;
@@ -170,6 +206,7 @@ bool XmlLoader::loadAllStruct() {
                     tmpStructNode->structTypeInfo->size = curEntryElement->IntAttribute("size", -1);
                     //type和size等待回填
                     tmpStructNode->structTypeInfo->type = 0;
+                    tmpStructNode->parentStructNode = NULL;
 
                     tmpStructInfo->structNodeList.push_back(tmpStructNode);
                 }
@@ -185,6 +222,7 @@ bool XmlLoader::loadAllStruct() {
                 tmpStructNode->structTypeInfo->size = curEntryElement->IntAttribute("size", -1);
                 //type和size等待回填
                 tmpStructNode->structTypeInfo->type = 0;
+                tmpStructNode->parentStructNode = NULL;
                 tmpStructInfo->structNodeList.push_back(tmpStructNode);
             }
 
@@ -214,7 +252,7 @@ bool XmlLoader::backpatchType() {
             if (tmpType != -1) {
                 this->structList[i]->structNodeList[j]->structTypeInfo->type = tmpType;
             } else {
-                std::cout << "no data structure type" << std::endl;
+                std::cout << "[XmlLoader::backpatchType]no data structure type: " << this->structList[i]->structNodeList[j]->structTypeInfo->typeName << std::endl;
             }
         }
     }
@@ -260,7 +298,7 @@ bool XmlLoader::backpatchSize() {
     if (this->pBackpatchChainHead->pNext == NULL) {
         return false;
     } else {
-        std::cout << "backpatch size false. please check if has [a in struct b, b in struct a]." << std::endl;
+        std::cout << "[XmlLoader::backpatchSize]backpatch size false. please check if has [a in struct b, b in struct a]." << std::endl;
         exit(0);
     }
 }
@@ -371,7 +409,23 @@ void XmlLoader::deepCopy(std::vector<StructNode *> &destStructNodeList, const st
         structNode->name = srcStructNodeList[i]->name;
         structNode->arrayInfo = srcStructNodeList[i]->arrayInfo;
         structNode->isLeaf = srcStructNodeList[i]->isLeaf;
+        structNode->parentStructNode = srcStructNodeList[i]->parentStructNode;
         destStructNodeList.push_back(structNode);
     }
+}
+
+bool XmlLoader::setParentStructNode() {
+    std::queue<StructNode *> structNodeQueue;
+    StructNode *tmpStructNode;
+    structNodeQueue.push(this->structList[0]);
+    while (!structNodeQueue.empty()){
+        tmpStructNode = structNodeQueue.front();
+        structNodeQueue.pop();
+        for (int i = 0; i < tmpStructNode->structNodeList.size(); ++i) {
+            structNodeQueue.push(tmpStructNode->structNodeList[i]);
+            tmpStructNode->structNodeList[i]->parentStructNode = tmpStructNode;
+        }
+    }
+    return false;
 }
 

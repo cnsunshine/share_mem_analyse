@@ -45,6 +45,8 @@ private:
     bool backpatchSize();
     //挂载struct信息到回填链中的entry
     bool mountStructIoEntry(StructNode *pStructNode);
+    //设置子结构的parentStructNode
+    bool setParentStructNode();
     //生成index数据
     bool createIndex();
     //获取数据类型

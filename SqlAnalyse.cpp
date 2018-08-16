@@ -38,8 +38,20 @@ bool SqlAnalyse::isLetter(const std::string &text) {
     if (!(text[0] >= 'a' && text[0] <= 'z') && !(text[0] >= 'A' && text[0] <= 'Z')) {
         return false;
     }
+    for (int i = 0; i < text.length(); ++i) {
+        if ((text[i] >= 'a' && text[i] <= 'z') || (text[i] >= 'A' && text[i] <= 'Z') ||
+            (text[i] >= '0' && text[i] <= '9')) {
+            continue;
+        } else {
+            return false;
+        }
+    }
 
-    for (int i = 1; i < text.length(); ++i) {
+    return true;
+}
+
+bool SqlAnalyse::isString(const std::string &text) {
+    for (int i = 0; i < text.length(); ++i) {
         if ((text[i] >= 'a' && text[i] <= 'z') || (text[i] >= 'A' && text[i] <= 'Z') ||
             (text[i] >= '0' && text[i] <= '9')) {
             continue;
@@ -125,7 +137,7 @@ void SqlAnalyse::analyseTextStep1() {
                 }
                 break;
             case 2:
-                if (this->isNumber(this->sql[i])) {
+                if (this->isNumber(this->sql[i]) || this->isLetter(this->sql[i])) {
                     text.push_back(this->sql[i]);
                     status = 2;
                     i++;
@@ -169,7 +181,7 @@ void SqlAnalyse::analyseTextStep1() {
                     status = 0;
                     text = "";
                 } else {
-                    std::cout << "bad sql: bad operator" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep1]bad sql: bad operator" << std::endl;
                     exit(0);
                 }
                 break;
@@ -207,7 +219,7 @@ void SqlAnalyse::analyseTextStep2() {
                     sqlType = 3;
                     status = 3;
                 } else {
-                    std::cout << "bad sql sentence: bad start" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: bad start" << std::endl;
                     exit(0);
                 }
                 break;
@@ -222,7 +234,7 @@ void SqlAnalyse::analyseTextStep2() {
                     //todo 暂时未实现
                     status = 16;
                 } else {
-                    std::cout << "bad sql sentence: bad text" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: bad text" << std::endl;
                     exit(0);
                 }
                 break;
@@ -233,7 +245,7 @@ void SqlAnalyse::analyseTextStep2() {
                 } else if (this->textList[i] == "into") {
                     status = 17;
                 } else {
-                    std::cout << "bad sql sentence: bad text" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: bad text" << std::endl;
                     exit(0);
                 }
                 break;
@@ -247,7 +259,7 @@ void SqlAnalyse::analyseTextStep2() {
                 if (this->textList[i] == "from") {
                     status = 12;
                 } else {
-                    std::cout << "bad sql sentence: bad text" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: bad text" << std::endl;
                     exit(0);
                 }
                 break;
@@ -258,7 +270,7 @@ void SqlAnalyse::analyseTextStep2() {
                 } else if (this->textList[i] == "from") {
                     status = 12;
                 } else {
-                    std::cout << "bad sql sentence: bad text" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: bad text" << std::endl;
                     exit(0);
                 }
                 break;
@@ -267,7 +279,7 @@ void SqlAnalyse::analyseTextStep2() {
                     this->tableName = this->textList[i];
                     status = 13;
                 } else {
-                    std::cout << "bad sql sentence: please input all" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: please input all" << std::endl;
                     exit(0);
                 }
                 break;
@@ -275,7 +287,7 @@ void SqlAnalyse::analyseTextStep2() {
                 if (this->textList[i] == "where") {
                     status = 14;
                 } else {
-                    std::cout << "bad sql sentence: bad text" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: bad text" << std::endl;
                     exit(0);
                 }
                 break;
@@ -284,17 +296,17 @@ void SqlAnalyse::analyseTextStep2() {
                 if (i < this->textList.size()) {//一个查询需要三个
                     if ((isLetter(this->textList[i - 2]) || isColumn(this->textList[i - 2])) &&
                         isOperator(this->textList[i - 1]) &&
-                        (isLetter(this->textList[i]) || isNumber(this->textList[i]))) {
+                        (isLetter(this->textList[i]) || isNumber(this->textList[i]) || isString(this->textList[i]))) {
                         queryConditionList.push_back(
                                 this->buildQueryCondition(this->textList[i - 2], this->textList[i - 1],
                                                           this->textList[i]));
                         status = 15;
                     } else {
-                        std::cout << "bad sql sentence: bad text" << std::endl;
+                        std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: bad text" << std::endl;
                         exit(0);
                     }
                 } else {
-                    std::cout << "bad sql sentence: lost query condition" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: lost query condition" << std::endl;
                     exit(0);
                 }
                 break;
@@ -302,7 +314,7 @@ void SqlAnalyse::analyseTextStep2() {
                 if (this->textList[i] == "and") {
                     status = 14;
                 } else {
-                    std::cout << "bad sql sentence: expect a 'and'" << std::endl;
+                    std::cout << "[SqlAnalyse::analyseTextStep2]bad sql sentence: expect a 'and'" << std::endl;
                     exit(0);
                 }
                 break;
@@ -427,7 +439,7 @@ bool SqlAnalyse::expandQueryCondition() {
             this->queryConditionList[i]->structNode = this->structList[0]; //structList[0]为主结构
             this->queryConditionList[i]->columnNameList.erase(it);
         } else {
-            std::cout << "input first struct wrong" << std::endl;
+            std::cout << "[SqlAnalyse::expandQueryCondition]input first struct wrong" << std::endl;
             exit(0);
         }
     }
@@ -461,7 +473,7 @@ bool SqlAnalyse::expandQueryCondition() {
             }
             this->queryConditionList.erase(this->queryConditionList.begin() + i); //删除已经更新的情况
             if (!match) {
-                std::cout << "match wrong" << std::endl;
+                std::cout << "[SqlAnalyse::expandQueryCondition]match wrong" << std::endl;
                 exit(0);
             }
 

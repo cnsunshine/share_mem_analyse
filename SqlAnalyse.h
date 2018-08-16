@@ -35,10 +35,11 @@ private:
     void analyseTextStep2(); //语法分析
 
     void toLower(); //将原始sql语句转换为小写
-    bool isOperator(const char &ch);
+    bool isOperator(const char &ch); //
     bool isOperator(const std::string &text);
-    bool isLetter(const char &ch);
+    bool isLetter(const char &ch); //标识符，字母开头
     bool isLetter(const std::string &text);
+    bool isString(const std::string &text);
     bool isNumber(const char &ch);
     bool isNumber(const std::string &text);
     bool isColumn(const std::string &text); //是否为查询列
